@@ -1,14 +1,28 @@
-from telegram.ext import ApplicationBuilder, CommandHandler
 import os
+import logging
+from telegram.ext import ApplicationBuilder, CommandHandler
 
-TOKEN = os.environ.get("BOT_TOKEN")
+logging.basicConfig(level=logging.INFO)
+
+TOKEN = os.getenv("BOT_TOKEN")
+
+if not TOKEN:
+    raise RuntimeError("BOT_TOKEN manquant")
 
 async def start(update, context):
-    await update.message.reply_text("Bot en ligne 🚀")
+    await update.message.reply_text("✅ Bot Railway OK")
 
-app = ApplicationBuilder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
 
-print("Bot démarré...")
-app.run_polling()
+    logging.info("Bot lancé, attente polling...")
+    app.run_polling(
+        close_loop=False,
+        stop_signals=None
+    )
+
+if name == "main":
+    main()
+
 
