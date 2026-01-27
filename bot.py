@@ -60,6 +60,12 @@ async def auto_signal(context: ContextTypes.DEFAULT_TYPE):
         text=message
     )
 
+async def debug(update, context):
+    chat = update.effective_chat
+    await update.message.reply_text(
+        f"Chat type: {chat.type}\nChat ID: {chat.id}"
+    )
+
 
 
 def main():
@@ -72,6 +78,8 @@ def main():
     app.add_handler(CommandHandler("signal", signal))
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("chatid", chatid))
+    app.add_handler(MessageHandler(filters.ALL, debug))
+
 
     # ⏱️ AUTOMATISATION : toutes les 15 minutes
     app.job_queue.run_repeating(
@@ -86,6 +94,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
