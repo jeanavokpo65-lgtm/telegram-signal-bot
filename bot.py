@@ -70,7 +70,7 @@ def main():
     # ⏱️ AUTOMATISATION : toutes les 15 minutes
     app.job_queue.run_repeating(
         auto_signal,
-        interval=900,  # 900 secondes = 15 minutes
+        interval=60,  # 900 secondes = 15 minutes
         first=10       # démarre après 10 secondes
     )
 
@@ -80,6 +80,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
