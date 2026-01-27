@@ -5,6 +5,7 @@ import random
 
 
 TOKEN = os.getenv("BOT_TOKEN")  # ✅ CORRIGÉ
+GROUP_CHAT_ID = int(os.getenv("GROUP_CHAT_ID"))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Bot en ligne 🚀")
@@ -48,6 +49,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
