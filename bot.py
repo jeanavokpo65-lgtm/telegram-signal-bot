@@ -74,7 +74,7 @@ async def debug(update, context):
 
 async def send_test_channel(context: ContextTypes.DEFAULT_TYPE):
     msg = await context.bot.send_message(
-        chat_id="@NOM_DU_CANAL",
+        chat_id="@signal24_1",
         text="🧪 Message test pour récupérer l’ID"
     )
 
@@ -112,6 +112,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
