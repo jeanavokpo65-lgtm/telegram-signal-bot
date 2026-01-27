@@ -1,128 +1,146 @@
-from telegram import Update
+import os
+import pandas as pd
+import requests
+from datetime import datetime, timezone
+
 from telegram.ext import (
     ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
     ContextTypes,
-    filters,
 )
-import os
-import random
+from telegram import Update
+
+from strategy import check_signal, get_tp_sl
+
+# =========================
+# VARIABLES D’ENVIRONNEMENT
+# =========================
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+MODE = os.getenv("MODE", "LIVE")  # PAPER ou LIVE
+
+SYMBOL = "BTCUSDT"
+TIMEFRAME = "5m"   # 1m ou 5m
+INTERVAL_SECONDS = 300  # 5 minutes
+
+BINANCE_URL = "https://api.binance.com/api/v3/klines"
+
+# =========================
+# ÉTAT GLOBAL
+# =========================
+
+last_signal_time = None  # évite les doublons
 
 
-TOKEN = os.getenv("BOT_TOKEN")  # ✅ CORRIGÉ
-GROUP_CHAT_ID = os.getenv("GROUP_CHAT_ID")
+# =========================
+# DATA BINANCE
+# =========================
 
-if not GROUP_CHAT_ID:
-    raise RuntimeError("GROUP_CHAT_ID manquant")
+def fetch_ohlcv(symbol=SYMBOL, interval=TIMEFRAME, limit=200):
+    params = {
+        "symbol": symbol,
+        "interval": interval,
+        "limit": limit
+    }
+    response = requests.get(BINANCE_URL, params=params, timeout=10)
+    data = response.json()
 
-GROUP_CHAT_ID = int(GROUP_CHAT_ID)
+    df = pd.DataFrame(data, columns=[
+        "time", "open", "high", "low", "close", "volume",
+        "_", "_", "_", "_", "_", "_"
+    ])
+
+    df = df[["time", "open", "high", "low", "close", "volume"]]
+
+    df["time"] = pd.to_datetime(df["time"], unit="ms", utc=True)
+    df[["open", "high", "low", "close", "volume"]] = df[
+        ["open", "high", "low", "close", "volume"]
+    ].astype(float)
+
+    return df
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot en ligne 🚀")
+# =========================
+# ENVOI SIGNAL CANAL
+# =========================
 
-async def signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    rsi = random.randint(10, 90)
-
-    if rsi < 30:
-        decision = "🟢 BUY"
-    elif rsi > 70:
-        decision = "🔴 SELL"
-    else:
-        decision = "🟡 HOLD"
+async def send_signal(context, signal, entry, tp, sl, timestamp):
+    session = "London / NY"
+    emoji = "🟢 BUY" if signal == "BUY" else "🔴 SELL"
 
     message = (
-        f"📊 Signal Trading\n"
-        f"RSI : {rsi}\n"
-        f"Décision : {decision}"
+        f"🚨 SIGNAL LIVE\n\n"
+        f"{SYMBOL}\n"
+        f"{emoji}\n\n"
+        f"Entry: {entry:.2f}\n"
+        f"TP: {tp:.2f}\n"
+        f"SL: {sl:.2f}\n\n"
+        f"Session: {session}\n"
+        f"TF: {TIMEFRAME}\n"
+        f"Time: {timestamp.strftime('%Y-%m-%d %H:%M UTC')}\n\n"
+        f"Strategy: EMA20 EMA50 VWAP\n"
+        f"Filters: Volume + ATR"
     )
 
-    await update.message.reply_text(message)
-
-async def chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        f"Chat ID = {update.effective_chat.id}"
-    )
-
-async def auto_signal(context: ContextTypes.DEFAULT_TYPE):
-    rsi = random.randint(10, 90)
-
-    if rsi < 30:
-        decision = "🟢 BUY"
-    elif rsi > 70:
-        decision = "🔴 SELL"
-    else:
-        decision = "🟡 HOLD"
-
-    message = (
-        f"📊 SIGNAL AUTOMATIQUE\n"
-        f"RSI : {rsi}\n"
-        f"Décision : {decision}"
-    )
-
-    await context.bot.send_message(
-        chat_id=GROUP_CHAT_ID,
-        text=message
-    )
-
-async def debug(update, context):
-    chat = update.effective_chat
-    await update.message.reply_text(
-        f"Chat type: {chat.type}\nChat ID: {chat.id}"
-    )
-
-async def send_test_channel(context: ContextTypes.DEFAULT_TYPE):
-    msg = await context.bot.send_message(
-        chat_id="@signal24_1",
-        text="🧪 Message test pour récupérer l’ID"
-    )
-
-    print(f"CHANNEL_ID = {msg.chat.id}")
+    if MODE == "LIVE":
+        await context.bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=message
+        )
 
 
+# =========================
+# JOB PRINCIPAL
+# =========================
 
+async def trading_job(context: ContextTypes.DEFAULT_TYPE):
+    global last_signal_time
+
+    try:
+        df = fetch_ohlcv()
+        signal = check_signal(df)
+
+        if signal in ["BUY", "SELL"]:
+            last_candle_time = df.iloc[-1]["time"]
+
+            # évite doublon sur même bougie
+            if last_signal_time == last_candle_time:
+                return
+
+            entry = df.iloc[-1]["close"]
+            tp, sl = get_tp_sl(entry, signal)
+
+            await send_signal(
+                context,
+                signal,
+                entry,
+                tp,
+                sl,
+                last_candle_time
+            )
+
+            last_signal_time = last_candle_time
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+
+
+# =========================
+# MAIN
+# =========================
 
 def main():
-    if not TOKEN or not GROUP_CHAT_ID:
-        raise RuntimeError("Variables manquantes")
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    # commande manuelle (optionnelle)
-    app.add_handler(CommandHandler("signal", signal))
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("chatid", chatid))
-    app.add_handler(MessageHandler(filters.ALL, debug))
-
-    app.job_queue.run_once(send_test_channel, when=5)
-
-
-
-    # ⏱️ AUTOMATISATION : toutes les 15 minutes
     app.job_queue.run_repeating(
-        auto_signal,
-        interval=7200,  # 7200 secondes = 2 heures
-        first=10       # démarre après 10 secondes
+        trading_job,
+        interval=INTERVAL_SECONDS,
+        first=10
     )
 
-    print("🤖 Bot démarré avec automatisation")
+    print("🤖 Bot lancé en mode:", MODE)
     app.run_polling()
 
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
