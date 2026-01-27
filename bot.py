@@ -1,5 +1,11 @@
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 import os
 import random
 
@@ -94,6 +100,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
