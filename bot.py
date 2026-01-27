@@ -72,6 +72,15 @@ async def debug(update, context):
         f"Chat type: {chat.type}\nChat ID: {chat.id}"
     )
 
+async def send_test_channel(context: ContextTypes.DEFAULT_TYPE):
+    msg = await context.bot.send_message(
+        chat_id="@NOM_DU_CANAL",
+        text="🧪 Message test pour récupérer l’ID"
+    )
+
+    print(f"CHANNEL_ID = {msg.chat.id}")
+
+
 
 
 def main():
@@ -85,6 +94,9 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("chatid", chatid))
     app.add_handler(MessageHandler(filters.ALL, debug))
+
+    app.job_queue.run_once(send_test_channel, when=5)
+
 
 
     # ⏱️ AUTOMATISATION : toutes les 15 minutes
@@ -100,6 +112,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
