@@ -1,7 +1,7 @@
 from telegram.ext import ApplicationBuilder, ContextTypes
 import os
 
-TOKEN = os.getenv["BOT_TOKEN"]
+TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = int(os.getenv("CHANNEL_ID"))  # ou -100xxxx
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE):
@@ -24,6 +24,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
