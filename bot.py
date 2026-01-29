@@ -15,7 +15,7 @@ def main():
 
     app.job_queue.run_repeating(
         send_message,
-        interval=180,
+        interval=60,
         first=0,
         name="canal_job"
     )
@@ -24,3 +24,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
