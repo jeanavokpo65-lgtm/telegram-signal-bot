@@ -1,7 +1,7 @@
 from telegram.ext import ApplicationBuilder, ContextTypes
 import os
 
-TOKEN = os.environ["BOT_TOKEN"]
+TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = int(os.getenv("CHANNEL_ID"))  # ou -100xxxx
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE):
@@ -15,7 +15,7 @@ def main():
 
     app.job_queue.run_repeating(
         send_message,
-        interval=60,
+        interval=900,
         first=0,
         name="canal_job"
     )
@@ -24,6 +24,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
